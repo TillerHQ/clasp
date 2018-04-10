@@ -42,7 +42,6 @@ import { Spinner } from 'cli-spinner';
 const splitLines = require('split-lines');
 import * as url from 'url';
 const readline = require('readline');
-import * as Promise from 'bluebird';
 import { Server } from "http";
 const logging = require('@google-cloud/logging');
 const chalk = require('chalk');
@@ -267,14 +266,14 @@ const getScriptURL = (scriptId: string) => `https://script.google.com/d/${script
  * find a dot file (such as when creating a a new script)
  * @return {Promise} A promise to get the project script ID.
  */
-function getProjectSettings(failSilently: boolean): Promise<ProjectSettings> {
+function getProjectSettings(failSilently?: boolean): Promise<ProjectSettings> {
   const promise = new Promise<ProjectSettings>((resolve, reject) => {
-    const fail = (failSilently: boolean) => {
+    const fail = (failSilently?: boolean) => {
       if (!failSilently) {
         logError(null, ERROR.SCRIPT_ID_DNE);
         reject();
       }
-      resolve('');
+      resolve({} as ProjectSettings);
     };
     const dotfile = DOTFILE.PROJECT();
     if (dotfile) {
@@ -1072,7 +1071,7 @@ commander
   .option('--json', "Show logs in JSON form")
   .option('--open', 'Open the StackDriver logs in browser')
   .action((cmd: LogOptions) => {
-    function printLogs([entries]) {
+    function printLogs([entries]:[any]) {
       for (let i = 0; i < 5; i++) {
         const metadata = entries[i].metadata;
         const { severity, timestamp, payload } = metadata;
@@ -1087,7 +1086,7 @@ commander
             textPayload: metadata.textPayload,
             jsonPayload: metadata.jsonPayload ? metadata.jsonPayload.fields.message.stringValue : '',
             protoPayload: metadata.protoPayload
-          })[payload] || ERROR.PAYLOAD_UNKNOWN;
+          } as any)[payload] || ERROR.PAYLOAD_UNKNOWN;
 
           if (payloadData && typeof(payloadData) === 'string') {
             payloadData = payloadData.padEnd(20);
@@ -1097,7 +1096,7 @@ commander
           ERROR: chalk.red(severity),
           INFO: chalk.blue(severity),
           DEBUG: chalk.yellow(severity)
-        })[severity] || severity;
+        } as any)[severity] || severity;
         coloredSeverity = String(coloredSeverity).padEnd(15);
         console.log(`${coloredSeverity} ${timestamp} ${functionName} ${payloadData}`);   
       }
@@ -1106,7 +1105,7 @@ commander
     getProjectSettings().then(({ projectId }: ProjectSettings) => {
       if (!projectId) {
         console.error(ERROR.NO_GCLOUD_PROJECT);
-        return process.exit(-1);
+        process.exit(-1);
       }
       if (cmd.open) {
         const stackdriverURL = `https://console.cloud.google.com/logs/viewer?project=${projectId}&resource=app_script_function`;
